@@ -73,27 +73,12 @@ OneLowFpsAvg_i <- function(dataFrame){
 ZeroOneLowFpsAvg_i <- function(dataFrame){
     return(mean(dataFrame$ZeroOneLowFps))
 }
-# ---------------------Configuraciones------------------------
-# Ruta a el archivo a leer
-ruta = "test3.csv"
 
-# variable entre los datos (nombre de la primera carpeta)
-variable = "conf 1"
-
-# Datos en el dataframe final
-resultados = "variable,AvgFps,UnoLowFps,CeroUnoLowFps"
 # ------------------------------------------------------------
 
-# argumentos dados al script
-argumentos = commandArgs(trailingOnly=TRUE)
 
-# Leer datos
-Datos = read.csv(ruta,header=TRUE)
-
-# funcion principal (toma como argumentos un vector)
 Individual <- function(Argumentos,ruta){
     Datos = read.csv(ruta,header=TRUE)
-
     # toma todos los datos y extrae unicamente el tiempo entre cuadros
     msVector = Datos$MsBetweenPresents
     
@@ -101,88 +86,97 @@ Individual <- function(Argumentos,ruta){
     sortMs = rev(sort(msVector))
 
     # separa los argumentos en columnas
-    columnas <- strsplit(Argumentos, ",")[[1]]
+    columnas <- Argumentos
 
     # crea vector con los resultados
     resultados = c()
     for(argumento in columnas){
-        resultados <- append(resultados,do.call(argumento,list(sortMs)))
+        resultados <- append(resultados,round(do.call(argumento,list(sortMs)),1))
     }
 
     return(resultados)
 }
 
 Multiples <- function(Argumentos,dataFrame){
-
     # separa los argumentos en columnas
-    columnas <- strsplit(Argumentos, ",")[[1]]
+    columnas <- Argumentos
 
     # crea vector con los resultados
     resultados = c()
     for(argumento in columnas){
-        resultados <- append(resultados,do.call(argumento,list(dataFrame)))
+        resultados <- append(resultados,round(do.call(argumento,list(dataFrame)),1))
     }
 
     return(resultados)
 }
 
 Main <- function(argumentos){
-
     # separador de argumentos
+    
     for (argumento in argumentos){
 
-        aux = strsplit(argumento,'=')
-        
-        if aux[1] == "path"{
+        aux = unlist(strsplit(argumento,'='))
+
+        if (aux[1] == "path"){
             # ruta = ruta absoluta al directorio del proyecto
             ruta = aux[2]
         }
 
-        if aux[1] == "intraArgs"{
-            intraArgs = strsplit(aux[2],',')
+        if (aux[1] == "intraArgs"){
+            intraArgs = unlist(strsplit(aux[2], ",",fixed = TRUE))
         }
 
 
-        if aux[1] == "interArgs"{
-            interArgs = strsplit(aux[2],',')
+        if (aux[1] == "interArgs"){
+            interArgs = unlist(strsplit(aux[2], ",",fixed = TRUE))
         }
 
     }
 
-    if (len(ruta)>0){
+    if (length(ruta)>0){
     # crea lista de carpetas dentro del directorio del proyecto
         carpetaPrimaria = list.files(path=ruta,full.names=FALSE,recursive=FALSE)
     }else{
         print("Error: No Path specified")
     }
 
-    # resultadosFinales => data frame
+    titulosColumnas = c(intraArgs,interArgs)
 
-    #for (carpeta in carpeta_primaria){
+    #df[nrow(df)+1,] <- #vector a añadir
+    colnamesResultadosFinales = append(interArgs,"",after = 0)
+    resultadosFinales <- as.data.frame(matrix(,0,length(colnamesResultadosFinales)))
+    colnames(resultadosFinales) <- colnamesResultadosFinales
+
+    for (carpeta in carpetaPrimaria){
         
-        # df = crear data frame con los nombres de columnas
-       # for (archivo in carpeta){
-            # rutaArchivo = ruta absoluta + carpeta primaria + archivo
+        resultadoPorVariable <- as.data.frame(matrix(,0,length(intraArgs)))
+        colnames(resultadoPorVariable) <- intraArgs
+        
+        archivos = list.files(path=paste(ruta,"/",carpeta,sep=""))
 
-            # df.rbind(Individual(argIndividuales,rutaArchivo)) 
-
+        for (archivo in archivos){
+            if (archivo != "perf_summary.csv"){
+                rutaArchivo = paste(ruta,"/",carpeta,"/",archivo,sep="")
+                
+                # calcula las metricas intra y las agrega al data frame resultadoPorVariable
+                resultadoPorVariable[nrow(resultadoPorVariable)+1,] <- Individual(intraArgs,rutaArchivo)
+            }
         }
-
-        # resultadosFinales.rbind(Multiples(argMultipels,df))
+# cambiar resultados finales, no esta añadiendo los resultados por variable
+        resultadosFinales[nrow(resultadosFinales)+1,] <- append(Multiples(interArgs,resultadoPorVariable),carpeta,after = 0)
 
     }
-    # print(resultadosFinales)
+    print(resultadosFinales)
+    return(resultadosFinales)
     
 
 
 }
 
-resul <- Individual("AvgFps,OneLowFps,ZeroOneLowFps",ruta)
-print(resul)
+argumentos = commandArgs(trailingOnly=TRUE)
+argumentos = c("path=/media/david/Backup/Documentos/Benchmark/WindowsVm","intraArgs=AvgFps,OneLowFps,ZeroOneLowFps","interArgs=AvgFps_i,OneLowFpsAvg_i,ZeroOneLowFpsAvg_i")
 
-
-
-
+resultados <- Main(argumentos)
 
 
 
